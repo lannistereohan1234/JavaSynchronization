@@ -132,20 +132,41 @@ public class SmartWarehouse {
 }
 ```
 
-ReadWriteLock
+### Step 4: High-Throughput Read Dominance (`ReadWriteLock`)
+* **Rule:** Exclusive locks force threads executing safe, concurrent read operations to queue up unnecessarily. A `ReadWriteLock` separates access into an **exclusive Write Lock** (only one writer allowed, blocks all readers) and a **shared Read Lock** (infinite parallel readers allowed).
+* **The Interleaving Trap:** If multiple readers are actively using the resource, a freshly arriving writer **must wait** until every single reader drops their lock. If it forces its way through, data corruption and partial-visibility anomalies occur.
+* **Performance Rule of Thumb:** `ReadWriteLock` has a higher mathematical internal bookkeeping overhead. Use it *only* when reads vastly outnumber writes (e.g., a lookup cache). Avoid it for write-heavy data (e.g., counters), where a traditional lock or an atomic variable is significantly faster.
 
-The Trade-off Problem
+```java
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-No Concurrency: Since only one thread can hold the write lock at a time, the threads will still be forced to wait in a single-file line, just like a regular lock. You gain zero speed benefits.
+public class SystemConfigRegistry {
+    private final ReadWriteLock rwLock = new ReentrantReadWriteLock();
+    private final Lock readLock = rwLock.readLock();
+    private final Lock writeLock = rwLock.writeLock();
+    
+    private String environmentRoutingUrl = "production.internal";
 
-Bookkeeping Overhead: A ReadWriteLock has to maintain internal counters to track how many readers and writers are waiting in line. This extra math takes CPU processing power.The 
+    // High throughput: 10,000 threads can call this concurrently without blocking each other
+    public String getRoutingUrl() {
+        readLock.lock();
+        try {
+            return environmentRoutingUrl;
+        } finally {
+            readLock.unlock();
+        }
+    }
 
-Result: It is actually much slower than a plain synchronized block or a standard ReentrantLock for write-heavy workloads.
-
-💡 The Golden Rule of ReadWriteLockYou should only use it when your application is Read-Heavy and Write-Rare.
-
-Bad Example (Counter): 90% Writes, 10% Reads \(\rightarrow \) Use synchronized or AtomicInteger.
-
-Good Example (Config Registry): A server URL that is read 1,000,000 times a day by users, but only changed once a month by an admin \(\rightarrow \) Perfect for ReadWriteLock.
-
-
+    // Rare operation: Blocks all incoming and current readers to safely update state
+    public void updateRoutingUrl(String newUrl) {
+        writeLock.lock();
+        try {
+            this.environmentRoutingUrl = newUrl;
+        } finally {
+            writeLock.unlock();
+        }
+    }
+}
+```
