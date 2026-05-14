@@ -1,0 +1,13 @@
+volatile      = visibility + ordering, NOT atomicity
+synchronized  = mutex + visibility, reentrant, no timeout
+wait/notify   = inside synchronized only; always while(!cond) wait();
+ReentrantLock = synchronized + timeout + interrupt + multiple conditions
+Condition     = like wait/notify, but many per lock
+ReadWriteLock = many readers OR one writer
+Atomic        = lock-free via CAS, fast under low contention
+LongAdder     = striped atomic, fast under high contention
+Semaphore     = N permits, NOT reentrant, NOT a mutex
+CountDownLatch= one-shot, "wait for N to finish"
+CyclicBarrier = reusable, "N threads meet here"
+ExecutorService = thread pool; never new Thread()
+ConcurrentHashMap = atomic single ops; use compute*/putIfAbsent for compound
