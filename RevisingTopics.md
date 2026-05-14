@@ -131,3 +131,21 @@ public class SmartWarehouse {
     }
 }
 ```
+
+ReadWriteLock
+
+The Trade-off Problem
+
+No Concurrency: Since only one thread can hold the write lock at a time, the threads will still be forced to wait in a single-file line, just like a regular lock. You gain zero speed benefits.
+
+Bookkeeping Overhead: A ReadWriteLock has to maintain internal counters to track how many readers and writers are waiting in line. This extra math takes CPU processing power.The 
+
+Result: It is actually much slower than a plain synchronized block or a standard ReentrantLock for write-heavy workloads.
+
+💡 The Golden Rule of ReadWriteLockYou should only use it when your application is Read-Heavy and Write-Rare.
+
+Bad Example (Counter): 90% Writes, 10% Reads \(\rightarrow \) Use synchronized or AtomicInteger.
+
+Good Example (Config Registry): A server URL that is read 1,000,000 times a day by users, but only changed once a month by an admin \(\rightarrow \) Perfect for ReadWriteLock.
+
+
